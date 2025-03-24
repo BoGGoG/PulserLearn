@@ -5,7 +5,7 @@ from matplotlib import rc
 rc('text', usetex=True)
 
 import pulser
-from pulser.devices import DigitalAnalogDevice
+from pulser.devices import DigitalAnalogDevice, MockDevice
 from pulser.register import Register
 from pulser.pulse import Pulse
 from pulser.waveforms import BlackmanWaveform
@@ -15,7 +15,7 @@ from pulser.waveforms import InterpolatedWaveform
 from scipy.optimize import minimize
 from scipy.spatial.distance import pdist, squareform
 
-def anneal(reg, Omega, delta_i=-1, delta_f=1, T:int=4000, draw:bool=False) -> dict:
+def anneal(reg, Omega, delta_i=-1, delta_f=1, T:int=4000, draw:bool=False, device=DigitalAnalogDevice) -> dict:
     # We choose a median value between the min and the max
     delta_f = -delta_i
 
@@ -24,7 +24,7 @@ def anneal(reg, Omega, delta_i=-1, delta_f=1, T:int=4000, draw:bool=False) -> di
         InterpolatedWaveform(T, [delta_i, 0, delta_f]),
         0,
     )
-    seq = Sequence(reg, DigitalAnalogDevice)
+    seq = Sequence(reg, device)
     seq.declare_channel("ising", "rydberg_global")
     seq.add(adiabatic_pulse, "ising")
 
@@ -66,7 +66,7 @@ def get_highest_counts(counts:dict, n:int):
         out.append([highest_counts[i][0], {"count": highest_counts[i][1], "proba": probas[i]}])
     return out
 
-def draw_solutions(reg:Register, counts:dict, n:int):
+def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice, draw_graph:bool=False):
     """
     Parameters:
     reg (Register): register of the circuit
@@ -77,15 +77,15 @@ def draw_solutions(reg:Register, counts:dict, n:int):
     probas = [val[1]["proba"] for val in highest_counts]
     for ii in range(n):
         reg.draw(
-            blockade_radius=DigitalAnalogDevice.rydberg_blockade_radius(1.0),
-            draw_graph=False,
+            blockade_radius=device.rydberg_blockade_radius(1.0),
+            draw_graph=draw_graph,
             draw_half_radius=True,
             qubit_colors = {f"q{i}": "red" for i, val in enumerate(highest_counts[ii][0]) if val == '1'},
             show=False
         )
         legend_elements = [
-            Patch(facecolor='mistyrose', label='State |1⟩'),
-            Patch(facecolor='lightgreen', label='State |0⟩')
+            Patch(facecolor='mistyrose', label=r'State $|1\rangle$'),
+            Patch(facecolor='lightgreen', label=r'State $|0\rangle$')
         ]
         plt.legend(handles=legend_elements)
         plt.title(f'Probas: ' + ', '.join([f'${probas[i]:.2f}$' if i != ii else f'$\\underline{{{probas[i]:.2f}}}$' for i in range(min(n+2, len(probas)))]))
