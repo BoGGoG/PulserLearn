@@ -93,9 +93,9 @@ def get_register_embedding(Q: np.ndarray,
 
     return coords, res
 
-def anneal(reg, Omega, delta_i=-1, delta_f=1, T:int=4000, draw:bool=False, device=DigitalAnalogDevice) -> dict:
+def anneal(reg, Omega, delta_i=-1, delta_f=None, T:int=4000, draw_pulse:bool=False, draw_distribution:bool=False, device=DigitalAnalogDevice) -> dict:
     # We choose a median value between the min and the max
-    delta_f = -delta_i
+    delta_f = delta_f if delta_f is not None else -delta_i
 
     adiabatic_pulse = Pulse(
         InterpolatedWaveform(T, [1e-9, Omega, 1e-9]),
@@ -111,8 +111,9 @@ def anneal(reg, Omega, delta_i=-1, delta_f=1, T:int=4000, draw:bool=False, devic
     final = results.get_final_state()
     count_dict = results.sample_final_state()
 
-    if draw:
+    if draw_pulse:
         seq.draw()
+    if draw_distribution:
         plot_distribution(count_dict)
     
     return count_dict
@@ -120,7 +121,7 @@ def anneal(reg, Omega, delta_i=-1, delta_f=1, T:int=4000, draw:bool=False, devic
 def plot_distribution(C, solutions:list=[], show:bool=True):
     C = dict(sorted(C.items(), key=lambda item: item[1], reverse=True))
     color_dict = {key: "r" if key in solutions else "g" for key in C}
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(8, 3))
     plt.xlabel("bitstrings")
     plt.ylabel("counts")
     plt.bar(C.keys(), C.values(), width=0.5, color=color_dict.values())
@@ -153,13 +154,19 @@ def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice,
     """
     highest_counts = get_highest_counts(counts, len(counts)) # sorted by count
     probas = [val[1]["proba"] for val in highest_counts]
+    fig, axs = plt.subplots(1, n, figsize=(4 * n, 4))
     for ii in range(n):
+        if n > 1:
+            axs[ii].axis('off')
+            axs[ii].set_title(f"Solution {ii+1}")
+            plt.sca(axs[ii])
         reg.draw(
             blockade_radius=device.rydberg_blockade_radius(1.0),
             draw_graph=draw_graph,
             draw_half_radius=True,
             qubit_colors = {f"q{i}": "red" for i, val in enumerate(highest_counts[ii][0]) if val == '1'},
-            show=False
+            show=False,
+            custom_ax=axs[ii] if n > 1 else axs
         )
         legend_elements = [
             Patch(facecolor='mistyrose', label=r'State $|1\rangle$'),
@@ -169,7 +176,7 @@ def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice,
         title = f"Solution: {highest_counts[ii][0]} "
         title += f'Probas: ' + ', '.join([f'${probas[i]:.2f}$' if i != ii else f'$\\underline{{{probas[i]:.2f}}}$' for i in range(min(n+2, len(probas)))])
         plt.title(title)
-        plt.show()
+    plt.show()
 
 def solve_qubo_bruteforce(Q: np.ndarray, n:int=1) -> list:
     """ 
