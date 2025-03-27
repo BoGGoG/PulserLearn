@@ -93,7 +93,7 @@ def get_register_embedding(Q: np.ndarray,
 
     return coords, res
 
-def anneal(reg, Omega, delta_i=-1, delta_f=None, T:int=4000, draw_pulse:bool=False, draw_distribution:bool=False, device=DigitalAnalogDevice) -> dict:
+def anneal(reg, Omega, delta_i=-1, delta_f=None, T:int=4000, draw_pulse:bool=False, draw_distribution:bool=False, show:bool=True, device=DigitalAnalogDevice) -> dict:
     # We choose a median value between the min and the max
     delta_f = delta_f if delta_f is not None else -delta_i
 
@@ -114,14 +114,18 @@ def anneal(reg, Omega, delta_i=-1, delta_f=None, T:int=4000, draw_pulse:bool=Fal
     if draw_pulse:
         seq.draw()
     if draw_distribution:
-        plot_distribution(count_dict)
+        plot_distribution(count_dict, show=show)
     
     return count_dict
 
-def plot_distribution(C, solutions:list=[], show:bool=True):
-    C = dict(sorted(C.items(), key=lambda item: item[1], reverse=True))
+def plot_distribution(C, solutions:list=[], show:bool=True, custom_ax=None, n_max_states:int=10):
+    # Sort dictionary by values in descending order and take first n_max_states items
+    C = dict(sorted(C.items(), key=lambda item: item[1], reverse=True)[:n_max_states])
     color_dict = {key: "r" if key in solutions else "g" for key in C}
-    plt.figure(figsize=(8, 3))
+    if custom_ax is None:
+        plt.figure(figsize=(8, 3))
+    else:
+        plt.sca(custom_ax)
     plt.xlabel("bitstrings")
     plt.ylabel("counts")
     plt.bar(C.keys(), C.values(), width=0.5, color=color_dict.values())
@@ -145,7 +149,7 @@ def get_highest_counts(counts:dict, n:int):
         out.append([highest_counts[i][0], {"count": highest_counts[i][1], "proba": probas[i]}])
     return out
 
-def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice, draw_graph:bool=False):
+def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice, draw_graph:bool=False, show:bool=True, custom_ax=None):
     """
     Parameters:
     reg (Register): register of the circuit
@@ -154,7 +158,10 @@ def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice,
     """
     highest_counts = get_highest_counts(counts, len(counts)) # sorted by count
     probas = [val[1]["proba"] for val in highest_counts]
-    fig, axs = plt.subplots(1, n, figsize=(4 * n, 4))
+    if custom_ax is None:
+        fig, axs = plt.subplots(1, n, figsize=(4 * n, 4))
+    else:
+        axs = custom_ax
     for ii in range(n):
         if n > 1:
             axs[ii].axis('off')
@@ -173,10 +180,11 @@ def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice,
             Patch(facecolor='lightgreen', label=r'State $|0\rangle$')
         ]
         plt.legend(handles=legend_elements)
-        title = f"Solution: {highest_counts[ii][0]} "
+        title = f"Sol. {highest_counts[ii][0]} "
         title += f'Probas: ' + ', '.join([f'${probas[i]:.2f}$' if i != ii else f'$\\underline{{{probas[i]:.2f}}}$' for i in range(min(n+2, len(probas)))])
         plt.title(title)
-    plt.show()
+    if show:
+        plt.show()
 
 def solve_qubo_bruteforce(Q: np.ndarray, n:int=1) -> list:
     """ 
