@@ -102,6 +102,7 @@ def anneal(reg, Omega, delta_i=-1, delta_f=None, T:int=4000, draw_pulse:bool=Fal
         InterpolatedWaveform(T, [delta_i, 0, delta_f]),
         0,
     )
+    # print(f"Pulse integral: {InterpolatedWaveform(T, [1e-9, Omega, 1e-9]).integral}")
     seq = Sequence(reg, device)
     seq.declare_channel("ising", "rydberg_global")
     seq.add(adiabatic_pulse, "ising")
