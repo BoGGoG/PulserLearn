@@ -102,7 +102,7 @@ def anneal(reg, Omega, delta_i=-1, delta_f=None, T:int=4000, draw_pulse:bool=Fal
         InterpolatedWaveform(T, [delta_i, 0, delta_f]),
         0,
     )
-    # print(f"Pulse integral: {InterpolatedWaveform(T, [1e-9, Omega, 1e-9]).integral}")
+    print(f"Pulse integral: {InterpolatedWaveform(T, [1e-9, Omega, 1e-9]).integral}")
     seq = Sequence(reg, device)
     seq.declare_channel("ising", "rydberg_global")
     seq.add(adiabatic_pulse, "ising")
@@ -150,13 +150,14 @@ def get_highest_counts(counts:dict, n:int):
         out.append([highest_counts[i][0], {"count": highest_counts[i][1], "proba": probas[i]}])
     return out
 
-def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice, draw_graph:bool=False, show:bool=True, custom_ax=None):
+def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice, draw_graph:bool=False, show:bool=True, custom_ax=None, Omega:float=1.0):
     """
     Parameters:
     reg (Register): register of the circuit
     counts (dict): dictionary {name, count} of counts
     n (int): number of solutions to draw
     """
+    plt.rc("text", usetex=True)
     highest_counts = get_highest_counts(counts, len(counts)) # sorted by count
     probas = [val[1]["proba"] for val in highest_counts]
     if custom_ax is None:
@@ -169,7 +170,7 @@ def draw_solutions(reg:Register, counts:dict, n:int, device=DigitalAnalogDevice,
             axs[ii].set_title(f"Solution {ii+1}")
             plt.sca(axs[ii])
         reg.draw(
-            blockade_radius=device.rydberg_blockade_radius(1.0),
+            blockade_radius=device.rydberg_blockade_radius(Omega),
             draw_graph=draw_graph,
             draw_half_radius=True,
             qubit_colors = {f"q{i}": "red" for i, val in enumerate(highest_counts[ii][0]) if val == '1'},
