@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.optimize import least_squares
+from functools import partial
 from .helpers import matprint
 
 
@@ -110,6 +112,52 @@ def solve_qubo_bruteforce(Q: np.ndarray, n: int = 1) -> list:
     return sorted(solutions, key=lambda x: x[1])[:n]
 
 
+def scale_and_round_qubo(
+    Q: np.ndarray,
+    max_abs_value: int,
+    max_scale_multiplier: int = 100,
+) -> tuple[np.ndarray, float, dict]:
+    """
+    Scale and round QUBO matrix Q such that the unrounded Q is as close to integer as possible.
+    For some embedding schemes an integer Q is needed.
+
+    Parameters:
+    Q: np.ndarray, the QUBO matrix
+    max_abs_value: int, the maximum absolute value of the scaled QUBO matrix
+    max_scale_multiplier: int, the maximum scale multiplier for scaling during optimization. Default is 100.
+    """
+
+    def int_loss(Q: np.ndarray, scale: float) -> float:
+        Q_scaled = Q / scale
+        Q_scaled_int = np.round(Q_scaled)
+        return np.sqrt(
+            np.mean(
+                np.square(
+                    (
+                        # (Q_scaled - Q_scaled_int) / (0.5 * Q_scaled + 0.5 * Q_scaled_int) # relative error
+                        Q_scaled - Q_scaled_int
+                    )
+                )
+            )
+        )
+
+    max_scale = np.max(np.abs(Q)) / max_abs_value
+    res = least_squares(
+        partial(int_loss, Q),
+        x0=max_scale * 2,
+        bounds=(max_scale, max_scale_multiplier * max_scale),
+        method="trf",
+    )
+    scale = res.x[0]
+    loss = int_loss(Q, scale)
+    props = {
+        "loss": loss,
+        "opt_props": res,
+    }
+
+    return (np.round(Q / scale), scale, props)
+
+
 if __name__ == "__main__":
     g = np.random.default_rng(42)
     time_sum = 120.0
@@ -152,3 +200,5 @@ if __name__ == "__main__":
     # print(q.T @ Q @ q)
     sol = solve_qubo_bruteforce(Q, 4)
     print(sol)
+
+    print("-" * 20)
