@@ -73,6 +73,18 @@ def generate_double_u1_u2_MCP(
     )
 
 
+def generate_full_event(
+    n_wires: int = 3,
+    time_sum: float = 120.0,
+    bin_max: int = 255,
+    binsize: float = 0.8,
+    noise_std: float = 0.0,
+    mcp=None,
+    g=np.random.default_rng(seed=1337),
+) -> np.ndarray:
+    return 0
+
+
 def get_QUBO_matrix(ti_u1, ti_u2, ti_mcp, time_sum):
     delta_u1 = ti_u1[0] - ti_u1[1]
     delta_u2 = ti_u2[0] - ti_u2[1]
@@ -158,7 +170,7 @@ def scale_and_round_qubo(
     return (np.round(Q / scale), scale, props)
 
 
-if __name__ == "__main__":
+def show_generate_event_u1_u2_MCP():
     g = np.random.default_rng(42)
     time_sum = 120.0
     e = generate_event_u1_u2_MCP(
@@ -176,9 +188,7 @@ if __name__ == "__main__":
         mcp=10.0,
         g=g,
     )
-    print(f"event: {e}")
-    ts = calc_time_sum(e[0], e[1], e[2])
-    print(f"ts: {ts}")
+    print(f"single hit event: {e}")
 
     e12 = generate_double_u1_u2_MCP(
         time_sum=time_sum,
@@ -187,6 +197,16 @@ if __name__ == "__main__":
         noise_std=1.0,
         g=g,
     )
+    # randomly permute second dimension. perms = [0/1, 0/1, 0/1]
+    # if 1, swap
+    perms = g.integers(0, 2, size=3)
+    for i in range(3):
+        if perms[i] == 1:
+            e12[i] = e12[i, ::-1]
+    print(f"event: {e12}")
+    ts = calc_time_sum(e[0], e[1], e[2])
+    print(f"ts: {ts}")
+
     print(f"event: {e12}")
     ts_1 = calc_time_sum(e12[0, 0], e12[1, 0], e12[2, 0])
     ts_2 = calc_time_sum(e12[0, 1], e12[1, 1], e12[2, 1])
@@ -200,5 +220,13 @@ if __name__ == "__main__":
     # print(q.T @ Q @ q)
     sol = solve_qubo_bruteforce(Q, 4)
     print(sol)
+    print(f"perms: {perms}")
 
     print("-" * 20)
+
+
+if __name__ == "__main__":
+    show_generate_event_u1_u2_MCP()
+    #
+    # e = generate_full_event()
+    # print(e)
